@@ -1,0 +1,153 @@
+name: tj-stack
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tj-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-pass}"
+      POSTGRES_DB: "${POSTGRES_DB:-transjakarta}"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 60s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - tj-network
+
+  rabbitmq:
+    image: rabbitmq:4.4
+    container_name: tj-rabbitmq
+    restart: unless-stopped
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:-rabbit}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD:-pass}"
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 60s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - tj-network
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: tj-mosquitto
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquittodata:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h 127.0.0.1 -p 1883 -t healthcheck -m ping"]
+      interval: 60s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - tj-network
+
+  backend-api:
+    build:
+      context: ./backend-api
+    image: tj-backend-api:local
+    container_name: tj-backend-api
+    restart: unless-stopped
+    environment:
+      HTTP_HOST: "0.0.0.0"
+      HTTP_PORT: "8080"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: "${POSTGRES_DB:-transjakarta}"
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-pass}"
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tj-network
+
+  mqtt-subscriber:
+    build:
+      context: ./mqtt-subscriber
+    image: tj-mqtt-subscriber:local
+    container_name: tj-mqtt-subscriber
+    restart: unless-stopped
+    environment:
+      MQTT_BROKER: "tcp://mosquitto:1883"
+      MQTT_TOPIC: "/fleet/vehicle/+/location"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: "${POSTGRES_DB:-transjakarta}"
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-pass}"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: "${RABBITMQ_USER:-rabbit}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:-pass}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - tj-network
+
+  geofence-listener:
+    build:
+      context: ./geofence-listener
+    image: tj-geofence-listener:local
+    container_name: tj-geofence-listener
+    restart: unless-stopped
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: "${RABBITMQ_USER:-rabbit}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:-pass}"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - tj-network
+
+  fleet-event-mock:
+    build:
+      context: ./fleet-event-mock
+    image: tj-fleet-event-mock:local
+    container_name: tj-fleet-event-mock
+    restart: unless-stopped
+    environment:
+      MQTT_BROKER: "tcp://mosquitto:1883"
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - tj-network
+
+volumes:
+  pgdata:
+  rabbitmqdata:
+  mosquittodata:
+
+networks:
+  tj-network:
+    driver: bridge
