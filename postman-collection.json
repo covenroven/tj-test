@@ -1,0 +1,80 @@
+{
+  "info": {
+    "name": "transjakarta",
+    "description": null,
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "get latest vehicle location",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{host}}/vehicles/{{vehicle_id}}/location",
+          "protocol": "",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "vehicles",
+            "{{vehicle_id}}",
+            "location"
+          ],
+          "query": [],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "get vehicle location history",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{host}}/vehicles/{{vehicle_id}}/history?start=1792832975&end=1792832991",
+          "protocol": "",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "vehicles",
+            "{{vehicle_id}}",
+            "history?start=1792832975&end=1792832991"
+          ],
+          "query": [
+            {
+              "key": "start",
+              "value": "1792832975"
+            },
+            {
+              "key": "end",
+              "value": "1792832991"
+            }
+          ],
+          "variable": []
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "host",
+      "value": "http://localhost:8080",
+      "type": "default"
+    },
+    {
+      "key": "vehicle_id",
+      "value": "B1234XYZ",
+      "type": "default"
+    }
+  ]
+}
