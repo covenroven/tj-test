@@ -57,6 +57,7 @@ func (s *vehicleService) StoreLocation(ctx context.Context, vl *vehicleLocation)
 	); err != nil {
 		return err
 	}
+	log.Printf("successfully stored vehicle location %s to database\n", vl.VehicleId)
 
 	return nil
 }
