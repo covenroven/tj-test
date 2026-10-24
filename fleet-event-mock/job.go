@@ -48,11 +48,12 @@ func (j *job) dispatch() error {
 		return err
 	}
 
-	log.Printf("successfully published location to topic %s | vehicle=%s lat=%.6f lon=%.6f",
+	log.Printf("successfully published location to topic %s | vehicle=%s lat=%.6f lon=%.6f speed=%.1fkm/h",
 		j.topic,
 		vl.VehicleId,
 		vl.Latitude,
 		vl.Longitude,
+		VEHICLE_SPEED_KMH,
 	)
 
 	return nil
