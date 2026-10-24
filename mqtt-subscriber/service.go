@@ -123,7 +123,7 @@ func (s *vehicleService) publishGeofenceEvent(ctx context.Context, vl *vehicleLo
 	); err != nil {
 		return err
 	}
-	log.Println("successfully published geofence event")
+	log.Printf("successfully published geofence event: %s\n", payload)
 
 	return nil
 }
